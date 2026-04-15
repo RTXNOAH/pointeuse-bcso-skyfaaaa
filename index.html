@@ -1,1 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Pointeuse BCSO</title>
 
+<style>
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  text-align: center;
+}
+
+.box {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
+  margin: auto;
+  margin-top: 30px;
+}
+
+input {
+  padding: 8px;
+  margin: 5px;
+  width: 90%;
+}
+
+button {
+  padding: 10px;
+  margin: 5px;
+}
+
+.switch {
+  width: 80px;
+  height: 40px;
+  background: red;
+  border-radius: 20px;
+  margin: 20px auto;
+  position: relative;
+  cursor: pointer;
+}
+
+.circle {
+  width: 30px;
+  height: 30px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 5px;
+  left: 5px;
+}
+
+.active {
+  background: green;
+}
+
+.active .circle {
+  left: 45px;
+}
+</style>
+
+</head>
+<body>
+
+<div id="login" class="box">
+  <h2>Connexion</h2>
+  <input id="matricule" placeholder="Matricule"><br>
+  <input id="password" type="password" placeholder="Mot de passe"><br>
+  <button onclick="login()">Connexion</button>
+  <button onclick="showRegister()">Créer compte</button>
+</div>
+
+<div id="register" class="box" style="display:none">
+  <h2>Inscription</h2>
+  <input id="r_nom" placeholder="Nom"><br>
+  <input id="r_prenom" placeholder="Prénom"><br>
+  <input id="r_matricule" placeholder="Matricule"><br>
+  <input id="r_password" placeholder="Mot de passe"><br>
+  <button onclick="register()">Valider</button>
+  <button onclick="showLogin()">Retour</button>
+</div>
+
+<div id="app" style="display:none">
+  <h2 id="userInfo"></h2>
+
+  <div id="switch" class="switch" onclick="toggle()">
+    <div class="circle"></div>
+  </div>
+
+  <div id="status">Hors service</div>
+  <div id="chrono">00:00</div>
+
+  <div id="log"></div>
+</div>
+
+<script>
+let users = JSON.parse(localStorage.getItem("users")) || [];
+let logs = JSON.parse(localStorage.getItem("logs")) || {};
+let currentUser = null;
+
+function showRegister() {
+  document.getElementById("login").style.display = "none";
+  document.getElementById("register").style.display = "block";
+}
+
+function showLogin() {
+  document.getElementById("register").style.display = "none";
+  document.getElementById("login").style.display = "block";
+}
+
+function register() {
+  let user = {
+    nom: document.getElementById("r_nom").value,
+    prenom: document.getElementById("r_prenom").value,
+    matricule: document.getElementById("r_matricule").value,
+    password: document.getElementById("r_password").value
+  };
+
+  users.push(user);
+  localStorage.setItem("users", JSON.stringify(users));
+  alert("Compte créé !");
+  showLogin();
+}
+
+function login() {
+  let m = document.getElementById("matricule").value;
+  let p = document.getElementById("password").value;
+
+  if (m === "admin" && p === "admin") {
+    currentUser = { admin: true };
+  } else {
+    currentUser = users.find(u => u.matricule === m && u.password === p);
+  }
+
+  if (!currentUser) {
+    alert("Erreur");
+    return;
+  }
+
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").style.display = "block";
+
+  document.getElementById("userInfo").innerText =
+    currentUser.admin ? "ADMIN" : currentUser.prenom;
+
+  afficher();
+}
+
+let actif = false;
+let debut;
+let interval;
+
+function toggle() {
+  let now = new Date();
+
+  if (!actif) {
+    actif = true;
+    debut = now;
+    document.getElementById("switch").classList.add("active");
+    document.getElementById("status").innerText = "En service";
+
+    interval = setInterval(() => {
+      let diff = Math.floor((new Date() - debut) / 1000);
+      let m = Math.floor(diff / 60);
+      let s = diff % 60;
+      document.getElementById("chrono").innerText =
+        m + ":" + s;
+    }, 1000);
+
+  } else {
+    actif = false;
+    clearInterval(interval);
+    document.getElementById("switch").classList.remove("active");
+    document.getElementById("status").innerText = "Hors service";
+
+    let diff = Math.floor((now - debut) / 60000);
+    if (diff < 1) return;
+
+    let key = currentUser.admin ? "admin" : currentUser.matricule;
+
+    if (!logs[key]) logs[key] = [];
+
+    logs[key].push(diff);
+
+    localStorage.setItem("logs", JSON.stringify(logs));
+    afficher();
+  }
+}
+
+function afficher() {
+  let key = currentUser.admin ? "admin" : currentUser.matricule;
+  let userLogs = logs[key] || [];
+
+  let html = "<h3>Historique</h3>";
+  userLogs.forEach(l => {
+    html += "<p>" + l + " min</p>";
+  });
+
+  document.getElementById("log").innerHTML = html;
+}
+</script>
+
+</body>
+</html>
